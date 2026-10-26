@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Summit County Snow Forecasts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  body { font-family: "Open Sans", Arial, sans-serif; color: #1a1a1a; padding: 2px; }
+  * { box-sizing: border-box; }
+  .cb-snow__grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  @media (min-width: 560px) { .cb-snow__grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 860px) { .cb-snow__grid { grid-template-columns: 1fr 1fr 1fr; } }
+  .cb-snow__card { height: 340px; background: #fff; border: 1px solid #ddd8cc; border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; }
+  .cb-snow__cardhead { background: #1a1a1a; color: #fff; padding: 14px 18px; border-bottom: 3px solid #C9A84C; }
+  .cb-snow__name { margin: 0; font-size: 20px; font-weight: 400; color: #fff; }
+  .cb-snow__town { margin: 2px 0 0; font-size: 13px; color: #cfcfcf; }
+  .cb-snow__body { padding: 16px 18px; flex: 1; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .cb-snow__stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cb-snow__stat { background: #f7f5f0; border-radius: 4px; padding: 8px 12px; text-align: center; }
+  .cb-snow__num { display: block; font-size: 26px; font-weight: 700; line-height: 1.15; }
+  .cb-snow__label { display: block; font-size: 11px; color: #777; margin-top: 2px; text-transform: uppercase; letter-spacing: .04em; }
+  .cb-snow__fc { margin: 0; font-size: 14px; line-height: 1.4; }
+  .cb-snow__fc strong { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #777; font-weight: 600; margin-bottom: 2px; }
+  .cb-snow__fc span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cb-snow__links { display: flex; gap: 8px; margin-top: auto; }
+  .cb-snow__btn { display: inline-block; padding: 8px 10px; border-radius: 4px; font-size: 14px; font-weight: 600; text-decoration: none; text-align: center;
+    border: 1px solid #1a1a1a; color: #1a1a1a; background: #fff; flex: 1 1 0; white-space: nowrap; }
+  .cb-snow__btn:hover { background: #f7f5f0; }
+  .cb-snow__btn--dark { background: #1a1a1a; color: #fff; }
+  .cb-snow__btn--dark:hover { background: #333; color: #fff; }
+  .cb-snow__homes { font-size: 14px; color: #1a1a1a; text-decoration: underline; text-underline-offset: 3px; }
+</style>
+</head>
+<body>
+<div class="cb-snow__grid" id="cb-snow-grid"></div>
+<script>
+(function () {
+  // Edit links here. "lat" and "lon" are mid mountain points used for the forecast.
+  var RESORTS = [
+    { name: "Breckenridge", town: "South end of Summit County", lat: 39.4730, lon: -106.0820,
+      cam: "https://www.breckenridge.com/the-mountain/mountain-conditions/mountain-cams.aspx",
+      report: "https://www.breckenridge.com/the-mountain/mountain-conditions/snow-and-weather-report.aspx",
+      homes: "https://cameronbreen.summitcountyrealestate.com/pages/breckenridge", homesLabel: "Explore Breckenridge homes" },
+    { name: "Keystone", town: "East of Dillon", lat: 39.5920, lon: -105.9500,
+      cam: "https://www.keystoneresort.com/the-mountain/mountain-conditions/mountain-cams.aspx",
+      report: "https://www.keystoneresort.com/the-mountain/mountain-conditions/snow-and-weather-report.aspx",
+      homes: "https://cameronbreen.summitcountyrealestate.com/pages/keystone", homesLabel: "Explore Keystone homes" },
+    { name: "Copper Mountain", town: "West of Frisco", lat: 39.4890, lon: -106.1610,
+      cam: "https://www.coppercolorado.com/the-mountain/webcams/",
+      report: "https://www.coppercolorado.com/the-mountain/conditions-weather/snow-report",
+      homes: "https://cameronbreen.summitcountyrealestate.com/pages/copper-mountain", homesLabel: "Explore Copper Mountain homes" },
+    { name: "Arapahoe Basin", town: "Just up the road from Keystone", lat: 39.6380, lon: -105.8710,
+      cam: "https://www.arapahoebasin.com/mountain-cams/",
+      report: "https://www.arapahoebasin.com/snow-report/",
+      homes: "https://cameronbreen.summitcountyrealestate.com/pages/keystone", homesLabel: "Explore nearby Keystone homes" },
+    { name: "Loveland", town: "Just past the Eisenhower Tunnel", lat: 39.6730, lon: -105.8990,
+      cam: "https://skiloveland.com/webcams/",
+      report: "https://skiloveland.com/snow-report/",
+      homes: "https://cameronbreen.summitcountyrealestate.com/pages/silverthorne", homesLabel: "Explore nearby Silverthorne homes" },
+    { name: "Vail", town: "Over Vail Pass from Copper", lat: 39.6170, lon: -106.3730,
+      cam: "https://www.vail.com/the-mountain/mountain-conditions/mountain-cams.aspx",
+      report: "https://www.vail.com/the-mountain/mountain-conditions/snow-and-weather-report.aspx",
+      homes: "https://cameronbreen.summitcountyrealestate.com/pages/frisco", homesLabel: "Explore nearby Frisco homes" },
+    { name: "Beaver Creek", town: "Just west of Vail", lat: 39.5880, lon: -106.5200,
+      cam: "https://www.beavercreek.com/the-mountain/mountain-conditions/mountain-cams.aspx",
+      report: "https://www.beavercreek.com/the-mountain/mountain-conditions/snow-and-weather-report.aspx",
+      homes: "https://cameronbreen.summitcountyrealestate.com/pages/frisco", homesLabel: "Explore nearby Frisco homes" }
+  ];
+
+  var grid = document.getElementById("cb-snow-grid");
+
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function link(href, cls, text) { var a = el("a", cls, text); a.href = href; a.target = "_blank"; a.rel = "noopener"; return a; }
+
+  // Turn an ISO 8601 duration like PT6H or P1DT12H into hours
+  function hours(dur) {
+    var m = /P(?:(\d+)D)?(?:T(?:(\d+)H)?)?/.exec(dur || "");
+    return m ? (parseInt(m[1] || 0, 10) * 24 + parseInt(m[2] || 0, 10)) : 0;
+  }
+
+  // Sum forecast snowfall (mm) that falls within the next N hours, prorating partial periods
+  function snowWithin(values, windowHours) {
+    var now = Date.now(), end = now + windowHours * 3600000, mm = 0;
+    (values || []).forEach(function (v) {
+      if (v.value == null) return;
+      var parts = v.validTime.split("/");
+      var start = Date.parse(parts[0]);
+      var stop = start + hours(parts[1]) * 3600000;
+      if (stop <= start) return;
+      var overlap = Math.min(stop, end) - Math.max(start, now);
+      if (overlap > 0) mm += v.value * (overlap / (stop - start));
+    });
+    return mm / 25.4; // inches
+  }
+
+  function fmtInches(x) { return (x < 0.5 ? "0" : String(Math.round(x))) + "\u2033"; }
+
+  function getJSON(url) {
+    return fetch(url, { headers: { "Accept": "application/geo+json" } }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  function buildCard(r) {
+    var card = el("div", "cb-snow__card");
+    var head = el("div", "cb-snow__cardhead");
+    head.appendChild(el("h3", "cb-snow__name", r.name));
+    head.appendChild(el("p", "cb-snow__town", r.town));
+    card.appendChild(head);
+
+    var body = el("div", "cb-snow__body");
+    var stats = el("div", "cb-snow__stats");
+    var s24 = el("div", "cb-snow__stat"); var n24 = el("span", "cb-snow__num", "\u2026"); s24.appendChild(n24); s24.appendChild(el("span", "cb-snow__label", "Next 24 hrs"));
+    var s72 = el("div", "cb-snow__stat"); var n72 = el("span", "cb-snow__num", "\u2026"); s72.appendChild(n72); s72.appendChild(el("span", "cb-snow__label", "Next 3 days"));
+    stats.appendChild(s24); stats.appendChild(s72);
+    body.appendChild(stats);
+
+    var fc = el("p", "cb-snow__fc"); var fcLabel = el("strong", null, "Forecast"); var fcText = el("span", null, "Loading\u2026");
+    fc.appendChild(fcLabel); fc.appendChild(fcText);
+    body.appendChild(fc);
+
+    var links = el("div", "cb-snow__links");
+    links.appendChild(link(r.cam, "cb-snow__btn cb-snow__btn--dark", "Snow Stake Cam"));
+    links.appendChild(link(r.report, "cb-snow__btn", "Snow Report"));
+    body.appendChild(links);
+
+    var homes = el("a", "cb-snow__homes", r.homesLabel); homes.href = r.homes; homes.target = "_top";
+    body.appendChild(homes);
+
+    card.appendChild(body);
+    grid.appendChild(card);
+    return { n24: n24, n72: n72, fcLabel: fcLabel, fcText: fcText };
+  }
+
+  function load(r, ui) {
+    return getJSON("https://api.weather.gov/points/" + r.lat.toFixed(4) + "," + r.lon.toFixed(4))
+      .then(function (pt) {
+        return Promise.all([getJSON(pt.properties.forecastGridData), getJSON(pt.properties.forecast)]);
+      })
+      .then(function (res) {
+        var snow = res[0].properties.snowfallAmount ? res[0].properties.snowfallAmount.values : [];
+        ui.n24.textContent = fmtInches(snowWithin(snow, 24));
+        ui.n72.textContent = fmtInches(snowWithin(snow, 72));
+        var p = res[1].properties.periods[0];
+        ui.fcLabel.textContent = p.name;
+        ui.fcText.textContent = p.shortForecast + ", " + (p.isDaytime ? "high " : "low ") + p.temperature + "\u00B0" + p.temperatureUnit;
+        return true;
+      })
+      .catch(function () {
+        ui.n24.textContent = "N/A"; ui.n72.textContent = "N/A";
+        ui.fcText.textContent = "Forecast unavailable right now. Check the resort's snow report.";
+        return false;
+      });
+  }
+
+  RESORTS.forEach(function (r) { load(r, buildCard(r)); });
+})();
+</script>
+</body>
+</html>
